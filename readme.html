@@ -147,16 +147,15 @@
     </div>
 
     <button class="ToggleComment">コメントを表示する</button>
-    <div class="comment-box">
-      <h2>コメントを投稿</h2>
-      <input type="text" id="name" placeholder="名前" />
-      <textarea id="message" placeholder="コメント内容"></textarea>
-      <button onclick="postComment()" class="CommentTgle">コメントする</button>
-
-      <div id="comment-list" class="comment">
-        <!-- コメントがここに追加されます -->
-      </div>
-    </div>
+    <div id="comment-section">
+      <div id="comment-list"></div>
+      <div id="comment-form">
+      <input type="text" id="user-id" placeholder="ユーザーID" />
+      <textarea id="comment-text" placeholder="コメントを入力"></textarea>
+      <input type="file" id="comment-image" accept="image/*" />
+      <button id="post-comment">コメント投稿</button>
+  </div>
+</div>
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
@@ -455,3 +454,4 @@
     </script>
   </body>
 </html>
+
