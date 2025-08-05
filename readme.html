@@ -448,15 +448,16 @@
       function ToggleShowAndHideComment() {
         if (document.getElementById("comment-section").style.display === "none") {
           document.getElementById("comment-section").style.display = "block";
-          CommentTgle.textContent = "コメントを非表示";
+          document.querySelector(".ToggleComment").textContent = "コメントを非表示";
         } else {
           document.getElementById("comment-section").style.display = "none";
-          CommentTgle.textContent = "コメントを表示";
+          document.querySelector(".ToggleComment").textContent = "コメントを表示";
         }
       }
       renderComments();
     </script>
   </body>
 </html>
+
 
 
