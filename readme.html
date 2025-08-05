@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AutoEditor-APS の使い方</title>
+    <style>
+      body {
+        font-family: "Segoe UI", sans-serif;
+        padding: 20px;
+        background: #f9f9f9;
+        color: #333;
+      }
+
+      h1 {
+        color: #0066cc;
+      }
+
+      ul {
+        line-height: 1.6;
+      }
+
+      #comment-section {
+        max-width: 600px;
+        margin: 20px auto;
+        font-family: Arial, sans-serif;
+      }
+
+      .comment,
+      .reply {
+        border: 1px solid #ddd;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 6px;
+        background: #fff;
+      }
+
+      .comment-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+
+      .user-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+
+      .comment-date {
+        margin-left: auto;
+        font-size: 0.8em;
+        color: #666;
+      }
+
+      .comment-actions button {
+        margin-right: 10px;
+        cursor: pointer;
+        background: none;
+        border: none;
+        color: #007bff;
+      }
+
+      .comment-actions button:hover {
+        text-decoration: underline;
+      }
+
+      .nested-replies {
+        margin-left: 40px;
+        margin-top: 10px;
+        border-left: 2px solid #eee;
+        padding-left: 10px;
+      }
+
+      .comment-image {
+        max-width: 100%;
+        margin-top: 8px;
+        border-radius: 4px;
+        box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+      }
+
+      #comment-form textarea,
+      #comment-form input[type="text"] {
+        width: 100%;
+        margin-bottom: 6px;
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        resize: vertical;
+      }
+
+      #comment-form input[type="file"] {
+        margin-bottom: 6px;
+      }
+
+      #post-comment,
+      #github-login-btn {
+        padding: 8px 12px;
+        border: none;
+        background-color: #007bff;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      #post-comment:hover,
+      #github-login-btn:hover {
+        background-color: #0056b3;
+      }
+
+      #message {
+        resize: none;
+        field-sizing: content;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>AutoEditor-APS セットアップ完了！</h1>
+    <p>ご利用ありがとうございます。</p>
+    <p>このツールは、動画から無音部分を自動的に検出・削除するCLIツールです。</p>
+    <h2>基本的な使い方</h2>
+    <ul>
+      <li>
+        コマンドプロンプトで <code>auto_edit_cli.exe</code> を実行してください。
+      </li>
+      <li>
+        オプション例：
+        <ul>
+          <li><code>--silent-threshold 0.04</code>：無音判定のしきい値</li>
+          <li><code>--edit audio</code>：音声波形を元に編集</li>
+          <li><code>--force</code>：音声付き動画として強制処理</li>
+        </ul>
+      </li>
+    </ul>
+    <h2>連絡先・サポート</h2>
+    <p>バグ報告や質問などは、バグ・質問コメントまでご連絡ください。</p>
+
+    <hr />
+    <p>© 2025 AutoEditor-APS</p>
+
+    <hr />
+    <div style="max-width: 600px; margin: 20px auto">
+      <button id="github-login-btn">GitHubでログイン</button>
+      <div id="user-info" style="margin-top: 10px"></div>
+    </div>
+
+    <button class="ToggleComment">コメントを表示する</button>
+    <div class="comment-box">
+      <h2>コメントを投稿</h2>
+      <input type="text" id="name" placeholder="名前" />
+      <textarea id="message" placeholder="コメント内容"></textarea>
+      <button onclick="postComment()" class="CommentTgle">コメントする</button>
+
+      <div id="comment-list" class="comment">
+        <!-- コメントがここに追加されます -->
+      </div>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+      import {
+        getAuth,
+        signInWithPopup,
+        GithubAuthProvider,
+        onAuthStateChanged,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+      // Firebase構成
+      const firebaseConfig = {
+        apiKey: "AIzaSyDxQZAdVvmxYDXFptD0Q0W9DOKDazpZe64",
+        authDomain: "login-7af50.firebaseapp.com",
+        projectId: "login-7af50",
+        storageBucket: "login-7af50.firebasestorage.app",
+        messagingSenderId: "467331542151",
+        appId: "1:467331542151:web:22b61e1c5fedaeaa79dc22",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const provider = new GithubAuthProvider();
+
+      const loginBtn = document.getElementById("github-login-btn");
+      const userInfoEl = document.getElementById("user-info");
+      const userIdInput = document.getElementById("user-id");
+
+      // コメントUI要素
+      const commentListEl = document.getElementById("comment-list");
+      const commentTextEl = document.getElementById("comment-text");
+      const commentImageEl = document.getElementById("comment-image");
+      const postBtn = document.getElementById("post-comment");
+      const ToggleComment = document.querySelector(".ToggleComment");
+
+      let comments = JSON.parse(localStorage.getItem("comments")) || [];
+      let currentUser = null;
+
+      // Firebaseログイン状態の監視
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          currentUser = user;
+          userInfoEl.textContent = `ログイン中: ${
+            user.displayName || user.email
+          }`;
+          userIdInput.value = user.displayName || user.email || "匿名";
+          userIdInput.disabled = true;
+          loginBtn.textContent = "ログアウト";
+        } else {
+          currentUser = null;
+          userInfoEl.textContent = "未ログイン";
+          userIdInput.value = "";
+          userIdInput.disabled = false;
+          loginBtn.textContent = "GitHubでログイン";
+        }
+      });
+
+      loginBtn.addEventListener("click", async () => {
+        if (currentUser) {
+          await signOut(auth);
+        } else {
+          try {
+            await signInWithPopup(auth, provider);
+          } catch (e) {
+            alert("ログインに失敗しました: " + e.message);
+          }
+        }
+      });
+
+      function saveComments() {
+        localStorage.setItem("comments", JSON.stringify(comments));
+      }
+
+      function renderReplies(replyArray, container) {
+        replyArray.forEach((reply) => {
+          const div = document.createElement("div");
+          div.className = "reply comment";
+          div.innerHTML = `
+        <div class="comment-header">
+          <img src="https://api.dicebear.com/5.x/initials/svg?seed=${
+            reply.userId
+          }" alt="icon" class="user-icon"/>
+          <strong>${reply.userId}</strong>
+          <span class="comment-date">${new Date(
+            reply.date
+          ).toLocaleString()}</span>
+        </div>
+        <div class="comment-body">${reply.text}</div>
+        <div class="comment-actions">
+          <button class="like-btn" data-id="${reply.id}">👍 ${
+            reply.likes || 0
+          }</button>
+          <button class="report-btn" data-id="${reply.id}">通報</button>
+          <button class="delete-btn" data-id="${reply.id}">削除</button>
+        </div>
+      `;
+          container.appendChild(div);
+
+          if (reply.replies && reply.replies.length > 0) {
+            const nested = document.createElement("div");
+            nested.className = "nested-replies";
+            container.appendChild(nested);
+            renderReplies(reply.replies, nested);
+          }
+        });
+      }
+
+      function renderComments() {
+        commentListEl.innerHTML = "";
+        comments.forEach((comment) => {
+          const div = document.createElement("div");
+          div.className = "comment";
+          div.innerHTML = `
+        <div class="comment-header">
+          <img src="https://api.dicebear.com/5.x/initials/svg?seed=${
+            comment.userId
+          }" alt="icon" class="user-icon"/>
+          <strong>${comment.userId}</strong>
+          <span class="comment-date">${new Date(
+            comment.date
+          ).toLocaleString()}</span>
+        </div>
+        <div class="comment-body">
+          ${comment.text}
+          ${
+            comment.image
+              ? `<img src="${comment.image}" alt="comment image" class="comment-image"/>`
+              : ""
+          }
+        </div>
+        <div class="comment-actions">
+          <button class="like-btn" data-id="${comment.id}">👍 ${
+            comment.likes || 0
+          }</button>
+          <button class="reply-btn" data-id="${comment.id}">返信</button>
+          <button class="report-btn" data-id="${comment.id}">通報</button>
+          <button class="delete-btn" data-id="${comment.id}">削除</button>
+        </div>
+        <div class="reply-section" data-parent-id="${comment.id}"></div>
+      `;
+          commentListEl.appendChild(div);
+          if (comment.replies && comment.replies.length > 0) {
+            const replyContainer = document.createElement("div");
+            replyContainer.className = "nested-replies";
+            div.appendChild(replyContainer);
+            renderReplies(comment.replies, replyContainer);
+          }
+        });
+      }
+
+      function clearForm() {
+        commentTextEl.value = "";
+        commentImageEl.value = "";
+      }
+
+      postBtn.addEventListener("click", () => {
+        const id = Date.now().toString();
+        const userId = userIdInput.value.trim() || "匿名";
+        const text = commentTextEl.value.trim();
+        if (!text) return alert("コメントを入力してください");
+
+        if (commentImageEl.files.length > 0) {
+          const file = commentImageEl.files[0];
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            comments.push({
+              id,
+              userId,
+              text,
+              date: Date.now(),
+              likes: 0,
+              image: e.target.result,
+              replies: [],
+            });
+            saveComments();
+            renderComments();
+            clearForm();
+          };
+          reader.readAsDataURL(file);
+        } else {
+          comments.push({
+            id,
+            userId,
+            text,
+            date: Date.now(),
+            likes: 0,
+            image: null,
+            replies: [],
+          });
+          saveComments();
+          renderComments();
+          clearForm();
+        }
+      });
+
+      commentListEl.addEventListener("click", (e) => {
+        const target = e.target;
+        if (target.classList.contains("like-btn")) {
+          const id = target.dataset.id;
+          const c = findCommentById(id, comments);
+          if (c) {
+            c.likes = (c.likes || 0) + 1;
+            saveComments();
+            renderComments();
+          }
+        } else if (target.classList.contains("delete-btn")) {
+          const id = target.dataset.id;
+          if (confirm("本当に削除しますか？")) {
+            deleteCommentById(id, comments);
+            saveComments();
+            renderComments();
+          }
+        } else if (target.classList.contains("report-btn")) {
+          alert("通報しました。開発者に通知されます。");
+        } else if (target.classList.contains("reply-btn")) {
+          const id = target.dataset.id;
+          const parentDiv = target.closest(".comment");
+          const replySection = parentDiv.querySelector(".reply-section");
+          if (!replySection.querySelector("textarea")) {
+            const replyBox = document.createElement("div");
+            replyBox.innerHTML = `
+          <textarea placeholder="返信を入力"></textarea>
+          <button>返信送信</button>
+          <button>キャンセル</button>
+        `;
+            replySection.appendChild(replyBox);
+
+            const textarea = replyBox.querySelector("textarea");
+            const sendBtn = replyBox.querySelector("button:first-of-type");
+            const cancelBtn = replyBox.querySelector("button:last-of-type");
+
+            sendBtn.addEventListener("click", () => {
+              const replyText = textarea.value.trim();
+              if (!replyText) return alert("返信を入力してください");
+              const reply = {
+                id: Date.now().toString(),
+                userId: currentUser?.displayName || "匿名",
+                text: replyText,
+                date: Date.now(),
+                likes: 0,
+                replies: [],
+              };
+              const parentComment = findCommentById(id, comments);
+              if (parentComment) {
+                parentComment.replies = parentComment.replies || [];
+                parentComment.replies.push(reply);
+                saveComments();
+                renderComments();
+              }
+            });
+            cancelBtn.addEventListener("click", () => {
+              replyBox.remove();
+            });
+          }
+        }
+      });
+
+      function findCommentById(id, list) {
+        for (const comment of list) {
+          if (comment.id === id) return comment;
+          if (comment.replies && comment.replies.length > 0) {
+            const found = findCommentById(id, comment.replies);
+            if (found) return found;
+          }
+        }
+        return null;
+      }
+
+      function deleteCommentById(id, list) {
+        for (let i = 0; i < list.length; i++) {
+          if (list[i].id === id) {
+            list.splice(i, 1);
+            return true;
+          }
+          if (list[i].replies && list[i].replies.length > 0) {
+            const deleted = deleteCommentById(id, list[i].replies);
+            if (deleted) return true;
+          }
+        }
+        return false;
+      }
+
+      ToggleComment.addEventListener("click", ToggleShowAndHideComment);
+
+      function ToggleShowAndHideComment() {
+        if (commentbox.style.display === "none") {
+          commentbox.style.display = "block";
+          CommentTgle.textContent = "コメントを非表示";
+        } else {
+          commentbox.style.display = "none";
+          CommentTgle.textContent = "コメントを表示";
+        }
+      }
+      renderComments();
+    </script>
+  </body>
+</html>
