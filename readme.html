@@ -113,6 +113,10 @@
         resize: none;
         field-sizing: content;
       }
+
+      #comment-section{
+        display: none;
+      }
     </style>
   </head>
 
@@ -442,11 +446,11 @@
       ToggleComment.addEventListener("click", ToggleShowAndHideComment);
 
       function ToggleShowAndHideComment() {
-        if (commentbox.style.display === "none") {
-          commentbox.style.display = "block";
+        if (document.getElementById("comment-section").style.display === "none") {
+          document.getElementById("comment-section").style.display = "block";
           CommentTgle.textContent = "コメントを非表示";
         } else {
-          commentbox.style.display = "none";
+          document.getElementById("comment-section").style.display = "none";
           CommentTgle.textContent = "コメントを表示";
         }
       }
@@ -454,4 +458,5 @@
     </script>
   </body>
 </html>
+
 
